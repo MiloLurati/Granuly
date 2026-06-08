@@ -1,6 +1,10 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
+#include <juce_audio_formats/juce_audio_formats.h>
+
+#include "GranularEngine.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -45,4 +49,7 @@ public:
 private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+    juce::AudioBuffer<float> audioReservoir;
+    juce::AudioFormatManager formatManager;
+    std::unique_ptr<GranularEngine> granularEngine;
 };

@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "BinaryData.h"
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
@@ -12,6 +13,40 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        )
 {
+    // 1. Tell the manager to register basic formats like WAV and AIFF
+    formatManager.registerBasicFormats();
+
+    // 2. Create a memory stream pointing directly to your embedded binary file
+    auto memoryStream = std::make_unique<juce::MemoryInputStream>(
+        BinaryData::OTH_128_Gm_Forward_Synth_wav,
+        BinaryData::OTH_128_Gm_Forward_Synth_wavSize,
+        false
+    );
+
+    // 3. Find a reader that can understand the stream data
+    std::unique_ptr<juce::AudioFormatReader> reader(formatManager.createReaderFor(std::move(memoryStream)));
+
+    if (reader != nullptr)
+    {
+        // 4. Resize our reservoir buffer to match the audio file channels and length
+        audioReservoir.setSize(reader->numChannels, static_cast<int>(reader->lengthInSamples));
+
+        // 5. Read the samples from the file stream right into our buffer
+        reader->read(&audioReservoir, 
+                     0,                                // Start at sample 0 in reservoir
+                     static_cast<int>(reader->lengthInSamples), 
+                     0,                                // Start at sample 0 in file
+                     true,                             // Read left channel
+                     true);                            // Read right channel
+        
+        std::cout << "Successfully loaded sample! Length: " << audioReservoir.getNumSamples() << " samples." << std::endl;
+    }
+    else
+    {
+        std::cout << "Failed to read binary audio data!" << std::endl;
+    }
+
+    granularEngine = std::make_unique<GranularEngine>(audioReservoir, reader->lengthInSamples, 4410, 0.5f, 50, 882);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -86,9 +121,6 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -124,33 +156,17 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
+    int bufferNumSamples = buffer.getNumSamples();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        buffer.clear(i, 0, bufferNumSamples);
     }
+
+    granularEngine->processBlock(buffer);
 }
 
 //==============================================================================
