@@ -1,12 +1,15 @@
 #include "GranularEngine.h"
 
 GranularEngine::GranularEngine(juce::AudioBuffer<float> &audioRes,
-                               int audioSize, int grainSampleDur, float grainG,
-                               int nGrains, int spawnInt)
+                               int audioSize,
+                               std::atomic<float> *grainSampleDur,
+                               std::atomic<float> *grainG,
+                               std::atomic<float> *nGrains,
+                               std::atomic<float> *spawnInt)
     : audioReservoir(audioRes), audioSampleSize(audioSize),
       range(0, audioSampleSize), numGrains(nGrains), spawnInterval(spawnInt),
       grainSampleDuration(grainSampleDur), grainGain(grainG) {
-  grains.resize(numGrains);
+  grains.resize(maxGrains);
 }
 
 GranularEngine::~GranularEngine() {}
@@ -15,16 +18,30 @@ void GranularEngine::processBlock(juce::AudioBuffer<float> &buffer) {
   int bufferNumSamples = buffer.getNumSamples();
   int numChannelsOutput = buffer.getNumChannels();
 
+  int grainSampleDur = static_cast<int>(grainSampleDuration->load());
+  float grainG = grainGain->load();
+  int spawnInt = static_cast<int>(spawnInterval->load());
+  int nGrains = static_cast<int>(numGrains->load());
+
   // 1. Run the clock and spawn all new grains for this block
   for (size_t i = 0; i < bufferNumSamples; i++) {
     spawnSampleClock += 1;
-    if (spawnSampleClock > spawnInterval) {
+    if (spawnSampleClock > spawnInt) {
       spawnSampleClock = 0;
-      for (auto &grain : grains) {
-        if (!grain.isActive) {
-          int startingSample = juce::Random::getSystemRandom().nextInt(range);
-          grain.spawn(i, startingSample, grainSampleDuration, grainGain);
-          break;
+
+      int activeCount = 0;
+      for (const auto &g : grains) {
+        if (g.isActive)
+          activeCount++;
+      }
+
+      if (activeCount < nGrains) {
+        for (auto &grain : grains) {
+          if (!grain.isActive) {
+            int startingSample = juce::Random::getSystemRandom().nextInt(range);
+            grain.spawn(i, startingSample, grainSampleDur, grainG);
+            break;
+          }
         }
       }
     }

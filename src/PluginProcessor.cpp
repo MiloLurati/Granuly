@@ -12,41 +12,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 #endif
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)
 #endif
-      ) {
-  // 1. Tell the manager to register basic formats like WAV and AIFF
-  formatManager.registerBasicFormats();
-
-  // 2. Create a memory stream pointing directly to your embedded binary file
-  auto memoryStream = std::make_unique<juce::MemoryInputStream>(
-      BinaryData::OTH_128_Gm_Forward_Synth_wav,
-      BinaryData::OTH_128_Gm_Forward_Synth_wavSize, false);
-
-  // 3. Find a reader that can understand the stream data
-  std::unique_ptr<juce::AudioFormatReader> reader(
-      formatManager.createReaderFor(std::move(memoryStream)));
-
-  if (reader != nullptr) {
-    // 4. Resize our reservoir buffer to match the audio file channels and
-    // length
-    audioReservoir.setSize(reader->numChannels,
-                           static_cast<int>(reader->lengthInSamples));
-
-    // 5. Read the samples from the file stream right into our buffer
-    reader->read(&audioReservoir,
-                 0, // Start at sample 0 in reservoir
-                 static_cast<int>(reader->lengthInSamples),
-                 0,     // Start at sample 0 in file
-                 true,  // Read left channel
-                 true); // Read right channel
-
-    std::cout << "Successfully loaded sample! Length: "
-              << audioReservoir.getNumSamples() << " samples." << std::endl;
-  } else {
-    std::cout << "Failed to read binary audio data!" << std::endl;
-  }
-
-  granularEngine = std::make_unique<GranularEngine>(
-      audioReservoir, reader->lengthInSamples, 4410, 0.5f, 50, 882);
+              ),
+      apvts(*this, nullptr, "PARAMETERS", createParameterLayout()) {
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor() {}
@@ -106,7 +73,48 @@ void AudioPluginAudioProcessor::changeProgramName(int index,
 
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
-                                              int samplesPerBlock) {}
+                                              int samplesPerBlock) {
+  if (audioReservoir.getNumSamples() == 0) {
+    // 1. Tell the manager to register basic formats like WAV and AIFF
+    formatManager.registerBasicFormats();
+
+    // 2. Create a memory stream pointing directly to your embedded binary file
+    auto memoryStream = std::make_unique<juce::MemoryInputStream>(
+        BinaryData::OTH_128_Gm_Forward_Synth_wav,
+        BinaryData::OTH_128_Gm_Forward_Synth_wavSize, false);
+
+    // 3. Find a reader that can understand the stream data
+    std::unique_ptr<juce::AudioFormatReader> reader(
+        formatManager.createReaderFor(std::move(memoryStream)));
+
+    if (reader != nullptr) {
+      // 4. Resize our reservoir buffer to match the audio file channels and
+      // length
+      audioReservoir.setSize(reader->numChannels,
+                             static_cast<int>(reader->lengthInSamples));
+
+      // 5. Read the samples from the file stream right into our buffer
+      reader->read(&audioReservoir,
+                   0, // Start at sample 0 in reservoir
+                   static_cast<int>(reader->lengthInSamples),
+                   0,     // Start at sample 0 in file
+                   true,  // Read left channel
+                   true); // Read right channel
+
+      std::cout << "Successfully loaded sample! Length: "
+                << audioReservoir.getNumSamples() << " samples." << std::endl;
+    } else {
+      std::cout << "Failed to read binary audio data!" << std::endl;
+    }
+
+    granularEngine = std::make_unique<GranularEngine>(
+        audioReservoir, reader->lengthInSamples,
+        apvts.getRawParameterValue("grainDur"),
+        apvts.getRawParameterValue("gain"),
+        apvts.getRawParameterValue("numGrains"),
+        apvts.getRawParameterValue("spawnInt"));
+  }
+}
 
 void AudioPluginAudioProcessor::releaseResources() {
   // When playback stops, you can use this as an opportunity to free up any
@@ -157,7 +165,7 @@ bool AudioPluginAudioProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor *AudioPluginAudioProcessor::createEditor() {
-  return new AudioPluginAudioProcessorEditor(*this);
+  return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -181,4 +189,21 @@ void AudioPluginAudioProcessor::setStateInformation(const void *data,
 // This creates new instances of the plugin..
 juce::AudioProcessor *JUCE_CALLTYPE createPluginFilter() {
   return new AudioPluginAudioProcessor();
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout
+AudioPluginAudioProcessor::createParameterLayout() {
+  std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+  // This creates the "knob" and gives it an ID ("dur") and a readable name
+  params.push_back(std::make_unique<juce::AudioParameterFloat>(
+      "gain", "Gain", 0.0f, 1.0f, 0.5f));
+  params.push_back(std::make_unique<juce::AudioParameterInt>(
+      "numGrains", "Number of Grains", 1, GranularEngine::maxGrains, 50));
+  params.push_back(std::make_unique<juce::AudioParameterInt>(
+      "spawnInt", "Spawn Interval", 1, 4410, 882));
+  params.push_back(std::make_unique<juce::AudioParameterInt>(
+      "grainDur", "Grain Duration", 100, 44100, 4410));
+
+  return {params.begin(), params.end()};
 }

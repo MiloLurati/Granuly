@@ -54,4 +54,6 @@ private:
 
   juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
   juce::AudioProcessorValueTreeState apvts;
+
+  void loadAudioFile();
 };

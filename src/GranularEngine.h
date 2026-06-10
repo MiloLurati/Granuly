@@ -52,15 +52,21 @@ struct Grain {
 
 class GranularEngine {
 public:
+  static constexpr int maxGrains = 500;
+  static constexpr int defaultSpawnInterval = 882;
+
   GranularEngine(juce::AudioBuffer<float> &audioReservoir, int audioSize,
-                 int grainSampleDur, float grainG, int nGrains = 50,
-                 int spawnInt = 882);
+                 std::atomic<float> *grainSampleDur, std::atomic<float> *grainG,
+                 std::atomic<float> *nGrains, std::atomic<float> *spawnInt);
   ~GranularEngine();
   void processBlock(juce::AudioBuffer<float> &buffer);
 
 private:
-  int audioSampleSize, numGrains, spawnInterval, grainSampleDuration;
-  float grainGain;
+  int audioSampleSize;
+  std::atomic<float> *numGrains;
+  std::atomic<float> *spawnInterval;
+  std::atomic<float> *grainSampleDuration;
+  std::atomic<float> *grainGain;
   juce::Range<int> range;
   int spawnSampleClock = 0;
   std::vector<Grain> grains;
