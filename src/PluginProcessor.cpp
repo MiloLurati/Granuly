@@ -112,7 +112,9 @@ void AudioPluginAudioProcessor::prepareToPlay(double sampleRate,
         apvts.getRawParameterValue("grainDur"),
         apvts.getRawParameterValue("gain"),
         apvts.getRawParameterValue("numGrains"),
-        apvts.getRawParameterValue("spawnInt"));
+        apvts.getRawParameterValue("spawnInt"),
+        apvts.getRawParameterValue("playheadPos"),
+        apvts.getRawParameterValue("spray"));
   }
 }
 
@@ -195,7 +197,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout
 AudioPluginAudioProcessor::createParameterLayout() {
   std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
-  // This creates the "knob" and gives it an ID ("dur") and a readable name
   params.push_back(std::make_unique<juce::AudioParameterFloat>(
       "gain", "Gain", 0.0f, 1.0f, 0.5f));
   params.push_back(std::make_unique<juce::AudioParameterInt>(
@@ -204,6 +205,10 @@ AudioPluginAudioProcessor::createParameterLayout() {
       "spawnInt", "Spawn Interval", 1, 4410, 882));
   params.push_back(std::make_unique<juce::AudioParameterInt>(
       "grainDur", "Grain Duration", 100, 44100, 4410));
+  params.push_back(std::make_unique<juce::AudioParameterFloat>(
+      "playheadPos", "Playhead Position", 0.0f, 1.0f, 0.5f));
+  params.push_back(std::make_unique<juce::AudioParameterFloat>(
+      "spray", "Spray", 0.0f, 1.0f, 0.1f));
 
   return {params.begin(), params.end()};
 }

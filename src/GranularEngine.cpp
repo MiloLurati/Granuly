@@ -1,14 +1,13 @@
 #include "GranularEngine.h"
 
-GranularEngine::GranularEngine(juce::AudioBuffer<float> &audioRes,
-                               int audioSize,
-                               std::atomic<float> *grainSampleDur,
-                               std::atomic<float> *grainG,
-                               std::atomic<float> *nGrains,
-                               std::atomic<float> *spawnInt)
-    : audioReservoir(audioRes), audioSampleSize(audioSize),
-      range(0, audioSampleSize), numGrains(nGrains), spawnInterval(spawnInt),
-      grainSampleDuration(grainSampleDur), grainGain(grainG) {
+GranularEngine::GranularEngine(
+    juce::AudioBuffer<float> &audioRes, int audioSize,
+    std::atomic<float> *grainSampleDur, std::atomic<float> *grainG,
+    std::atomic<float> *nGrains, std::atomic<float> *spawnInt,
+    std::atomic<float> *playheadPos, std::atomic<float> *spr)
+    : audioReservoir(audioRes), audioSampleSize(audioSize), numGrains(nGrains),
+      spawnInterval(spawnInt), grainSampleDuration(grainSampleDur),
+      grainGain(grainG), playheadPosition(playheadPos), spray(spr) {
   grains.resize(maxGrains);
 }
 
@@ -38,7 +37,7 @@ void GranularEngine::processBlock(juce::AudioBuffer<float> &buffer) {
       if (activeCount < nGrains) {
         for (auto &grain : grains) {
           if (!grain.isActive) {
-            int startingSample = juce::Random::getSystemRandom().nextInt(range);
+            int startingSample = getGrainStartingSample();
             grain.spawn(i, startingSample, grainSampleDur, grainG);
             break;
           }
@@ -88,4 +87,24 @@ void GranularEngine::processBlock(juce::AudioBuffer<float> &buffer) {
     }
     grain.bufferStartIndex = 0;
   }
+}
+
+int GranularEngine::getGrainStartingSample() {
+  float playheadPos = playheadPosition->load();
+  float spr = spray->load();
+  float grainSampleDur = grainSampleDuration->load();
+
+  int centerSample = static_cast<int>(playheadPos * audioSampleSize);
+  int sparySamples = static_cast<int>(spr * audioSampleSize);
+
+  int randomOffset = 0;
+  if (sparySamples > 0) {
+    randomOffset = juce::Random::getSystemRandom().nextInt(sparySamples * 2) -
+                   sparySamples;
+  }
+
+  int startingSample = centerSample + randomOffset;
+  int maxSafeSample =
+      std::max(0, static_cast<int>(audioSampleSize - grainSampleDur));
+  return std::clamp(startingSample, 0, maxSafeSample);
 }

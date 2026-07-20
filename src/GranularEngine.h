@@ -57,7 +57,8 @@ public:
 
   GranularEngine(juce::AudioBuffer<float> &audioReservoir, int audioSize,
                  std::atomic<float> *grainSampleDur, std::atomic<float> *grainG,
-                 std::atomic<float> *nGrains, std::atomic<float> *spawnInt);
+                 std::atomic<float> *nGrains, std::atomic<float> *spawnInt,
+                 std::atomic<float> *playheadPos, std::atomic<float> *spr);
   ~GranularEngine();
   void processBlock(juce::AudioBuffer<float> &buffer);
 
@@ -67,8 +68,11 @@ private:
   std::atomic<float> *spawnInterval;
   std::atomic<float> *grainSampleDuration;
   std::atomic<float> *grainGain;
-  juce::Range<int> range;
+  std::atomic<float> *playheadPosition;
+  std::atomic<float> *spray;
   int spawnSampleClock = 0;
   std::vector<Grain> grains;
   juce::AudioBuffer<float> &audioReservoir;
+
+  int getGrainStartingSample();
 };
