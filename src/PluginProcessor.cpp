@@ -167,7 +167,7 @@ bool AudioPluginAudioProcessor::hasEditor() const {
 }
 
 juce::AudioProcessorEditor *AudioPluginAudioProcessor::createEditor() {
-  return new juce::GenericAudioProcessorEditor(*this);
+  return new AudioPluginAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -197,8 +197,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout
 AudioPluginAudioProcessor::createParameterLayout() {
   std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
 
+  auto stringFromValue = [](float value, int) {
+    return juce::String(value, 2);
+  };
+
+  auto valueFromString = [](juce::String text) { return text.getFloatValue(); };
+
   params.push_back(std::make_unique<juce::AudioParameterFloat>(
-      "gain", "Gain", 0.0f, 1.0f, 0.5f));
+      "gain", "Gain", juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f, "",
+      juce::AudioProcessorParameter::genericParameter, stringFromValue,
+      valueFromString));
   params.push_back(std::make_unique<juce::AudioParameterInt>(
       "numGrains", "Number of Grains", 1, GranularEngine::maxGrains, 50));
   params.push_back(std::make_unique<juce::AudioParameterInt>(
@@ -206,9 +214,14 @@ AudioPluginAudioProcessor::createParameterLayout() {
   params.push_back(std::make_unique<juce::AudioParameterInt>(
       "grainDur", "Grain Duration", 100, 44100, 4410));
   params.push_back(std::make_unique<juce::AudioParameterFloat>(
-      "playheadPos", "Playhead Position", 0.0f, 1.0f, 0.5f));
+      "playheadPos", "Playhead Position",
+      juce::NormalisableRange<float>(0.0f, 1.0f), 0.5f, "",
+      juce::AudioProcessorParameter::genericParameter, stringFromValue,
+      valueFromString));
   params.push_back(std::make_unique<juce::AudioParameterFloat>(
-      "spray", "Spray", 0.0f, 1.0f, 0.1f));
+      "spray", "Spray", juce::NormalisableRange<float>(0.0f, 1.0f), 0.1f, "",
+      juce::AudioProcessorParameter::genericParameter, stringFromValue,
+      valueFromString));
 
   return {params.begin(), params.end()};
 }

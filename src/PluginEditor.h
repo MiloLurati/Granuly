@@ -18,5 +18,24 @@ private:
   // access the processor object that created it.
   AudioPluginAudioProcessor &processorRef;
 
+  using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
+
+  juce::Slider gainSlider;
+  juce::Slider numGrainsSlider;
+  juce::Slider spawnIntervalSlider;
+  juce::Slider grainDurationSlider;
+  juce::Slider playheadPositionSlider;
+  juce::Slider spraySlider;
+
+  juce::TextButton selectSampleButton;
+  void openButtonClicked();
+
+  std::unique_ptr<SliderAttachment> gainSliderAttachment;
+  std::unique_ptr<SliderAttachment> numGrainsSliderAttachment;
+  std::unique_ptr<SliderAttachment> spawnIntervalSliderAttachment;
+  std::unique_ptr<SliderAttachment> grainDurationSliderAttachment;
+  std::unique_ptr<SliderAttachment> playheadPositionSliderAttachment;
+  std::unique_ptr<SliderAttachment> spraySliderAttachment;
+
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessorEditor)
 };
