@@ -47,6 +47,8 @@ public:
 
   juce::AudioProcessorValueTreeState apvts;
 
+  void loadAudioFile(const juce::File &file);
+
 private:
   //==============================================================================
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioPluginAudioProcessor)
@@ -56,5 +58,5 @@ private:
 
   juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-  void loadAudioFile();
+  juce::CriticalSection audioLock;
 };

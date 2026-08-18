@@ -27,6 +27,7 @@ private:
   juce::Slider playheadPositionSlider;
   juce::Slider spraySlider;
 
+  std::unique_ptr<juce::FileChooser> fileChooser;
   juce::TextButton selectSampleButton;
   void openButtonClicked();
 

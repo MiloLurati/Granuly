@@ -158,6 +158,7 @@ void AudioPluginAudioProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     buffer.clear(i, 0, bufferNumSamples);
   }
 
+  const juce::ScopedLock lock(audioLock);
   granularEngine->processBlock(buffer);
 }
 
@@ -224,4 +225,27 @@ AudioPluginAudioProcessor::createParameterLayout() {
       valueFromString));
 
   return {params.begin(), params.end()};
+}
+
+void AudioPluginAudioProcessor::loadAudioFile(const juce::File &file) {
+  std::unique_ptr<juce::AudioFormatReader> reader(
+      formatManager.createReaderFor(file));
+
+  juce::AudioBuffer<float> tempBuffer;
+  tempBuffer.setSize(reader->numChannels,
+                     static_cast<int>(reader->lengthInSamples));
+
+  reader->read(&tempBuffer, 0, static_cast<int>(reader->lengthInSamples), 0,
+               true, true);
+  const juce::ScopedLock lock(audioLock);
+  audioReservoir.makeCopyOf(tempBuffer);
+
+  granularEngine = std::make_unique<GranularEngine>(
+      audioReservoir, reader->lengthInSamples,
+      apvts.getRawParameterValue("grainDur"),
+      apvts.getRawParameterValue("gain"),
+      apvts.getRawParameterValue("numGrains"),
+      apvts.getRawParameterValue("spawnInt"),
+      apvts.getRawParameterValue("playheadPos"),
+      apvts.getRawParameterValue("spray"));
 }

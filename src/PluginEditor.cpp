@@ -73,6 +73,9 @@ void AudioPluginAudioProcessorEditor::paint(juce::Graphics &g) {
 void AudioPluginAudioProcessorEditor::resized() {
   auto area = getLocalBounds().reduced(10);
 
+  selectSampleButton.setBounds(area.removeFromTop(30));
+  area.removeFromTop(5);
+
   int numSliders = 6;
   int sliderWidth = area.getWidth() / numSliders;
   int sliderHeight = area.getHeight();
@@ -108,4 +111,18 @@ void AudioPluginAudioProcessorEditor::resized() {
                               static_cast<int>(sliderHeight * 0.15f));
 }
 
-void AudioPluginAudioProcessorEditor::openButtonClicked() {}
+void AudioPluginAudioProcessorEditor::openButtonClicked() {
+  fileChooser = std::make_unique<juce::FileChooser>(
+      "Select Sample",
+      juce::File::getSpecialLocation(juce::File::userHomeDirectory),
+      "*.wav;*.aiff;*.mp3");
+
+  auto folderChooserFlags = juce::FileBrowserComponent::openMode |
+                            juce::FileBrowserComponent::canSelectFiles;
+
+  fileChooser->launchAsync(folderChooserFlags,
+                           [this](const juce::FileChooser &chooser) {
+                             juce::File audioFile(chooser.getResult());
+                             processorRef.loadAudioFile(audioFile);
+                           });
+}
